@@ -250,6 +250,52 @@ void clampedExpVector(float* values, int* exponents, float* output, int N) {
   // N and VECTOR_WIDTH, not just when VECTOR_WIDTH divides N
   //
   
+  __cs149_vec_float x;
+  __cs149_vec_int y;
+  __cs149_vec_float result;
+  __cs149_vec_float zero = _cs149_vset_float(0.f);
+  __cs149_vec_float clampVal = _cs149_vset_float(9.999999);
+  __cs149_vec_float floatOnes = _cs149_vset_float(1.f);
+  __cs149_vec_int intOnes = _cs149_vset_int(1);
+  __cs149_mask maskAll, maskZeroExp, maskIsNotZeroExp, maskClamp;
+  
+  for (int i=0; i<N; i+=VECTOR_WIDTH) {
+
+    // All ones
+    if (i + VECTOR_WIDTH < N) {
+      maskAll = _cs149_init_ones();
+    } else {
+      maskAll = _cs149_init_ones(N - i);
+    }
+
+    // All zeros
+    maskZeroExp = _cs149_init_ones();
+    maskClamp = _cs149_init_ones();
+
+    // Load vector of values from contiguous memory addresses
+    _cs149_vload_float(x, values+i, maskAll);               // x = values[i];
+    _cs149_vload_int(y, exponents+i, maskAll);
+
+    // Execute instruction using mask ("if" clause)
+    _cs149_vmove_float(result, floatOnes, maskAll);      //   output[i] = 1;
+	
+    // Set mask according to predicate
+    _cs149_vlt_int(maskZeroExp, y, intOnes, maskAll);     // if (y == 0) {
+    // Inverse maskIsNegative to generate "else" mask
+    maskIsNotZeroExp = _cs149_mask_not(maskZeroExp);     // } else {
+    while (_cs149_cntbits(maskIsNotZeroExp) > 0) {
+       _cs149_vmult_float(result, x, result, maskIsNotZeroExp);
+       _cs149_vsub_int(y, y, intOnes, maskAll);
+       _cs149_vlt_int(maskZeroExp, y, intOnes, maskAll);
+       maskIsNotZeroExp = _cs149_mask_not(maskZeroExp);       
+    } 
+
+    _cs149_vgt_float(maskClamp, result, clampVal, maskAll);
+    _cs149_vmove_float(result, clampVal, maskClamp);
+
+    // Write results back to memory
+    _cs149_vstore_float(output+i, result, maskAll);
+  }
 }
 
 // returns the sum of all elements in values

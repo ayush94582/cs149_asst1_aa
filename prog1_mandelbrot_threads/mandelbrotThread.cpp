@@ -35,7 +35,17 @@ void workerThreadStart(WorkerArgs * const args) {
     // program that uses two threads, thread 0 could compute the top
     // half of the image and thread 1 could compute the bottom half.
 
-    printf("Hello world from thread %d\n", args->threadId);
+    double startTime = CycleTimer::currentSeconds();
+
+    int threadId = args->threadId;
+
+    for (int i=threadId; i < (int) args->height; i+=args->numThreads) {
+        mandelbrotSerial(args->x0, args->y0, args->x1, args->y1, args->width, args->height, i, 1, args->maxIterations, args->output);
+    }
+
+    double endTime = CycleTimer::currentSeconds();
+
+    printf("Thread %d took %f seconds\n", threadId, 1000 * (endTime - startTime));
 }
 
 //
@@ -66,11 +76,11 @@ void mandelbrotThread(
         // TODO FOR CS149 STUDENTS: You may or may not wish to modify
         // the per-thread arguments here.  The code below copies the
         // same arguments for each thread
-        args[i].x0 = x0;
+        args[i].x0 = x0; 
         args[i].y0 = y0;
-        args[i].x1 = x1;
+        args[i].x1 = x1; 
         args[i].y1 = y1;
-        args[i].width = width;
+	args[i].width = width;
         args[i].height = height;
         args[i].maxIterations = maxIterations;
         args[i].numThreads = numThreads;
